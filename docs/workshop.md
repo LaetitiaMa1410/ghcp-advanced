@@ -1215,6 +1215,150 @@ Everything above works in the GitHub Copilot CLI too. The CLI runs the same Copi
 
 Use `Shift+Tab` to switch into plan mode if you want to talk through a decision before the agent writes a file.
 
+## 3.4 Bonus: build Story 9 with Squad
+
+So far one agent has worked through the stories with you, one skill at a time. For the last story you hand the work to a **team of agents**. [Squad](https://github.com/bradygaster/squad) is an open-source tool that sets up a team of specialist agents for GitHub Copilot - for example a lead, a frontend developer, a tester and a reviewer. Each member runs in its own context, reads only its own charter and history, and writes what it learned back into a `.squad/` folder in your repo. That is context engineering again: instead of one long chat that fills up, every specialist gets a small, focused context.
+
+Your task: let Squad implement [Story 9 - Web frontend](https://github.com/EfeSenerr/ghcp-advanced/blob/main/user-stories/09-web-frontend.md) on top of the API you already have. You stay the human in charge: you approve the team, the plan and the result.
+
+<div class="info" data-title="Squad is a third-party, open-source tool">
+
+> Squad is maintained by Brady Gaster, not by GitHub. It runs on top of GitHub Copilot and uses your Copilot requests. Check your organization's policy before you install it on a work machine.
+
+</div>
+
+### 3.4.1 Pick your starting point
+
+**Option A - you finished Stories 1-8.** Use your own `duck-emporium/`. Commit everything first so you can compare and roll back.
+
+**Option B - you are not that far yet.** Copy the starter from this repo. It has Stories 1-8 implemented and tested as a JSON API, and no frontend. Its [README](https://github.com/EfeSenerr/ghcp-advanced/blob/main/starters/squad-story-9/README.md) lists every endpoint.
+
+On macOS or Linux, from the root of your fork:
+
+```bash
+cp -R starters/squad-story-9 duck-emporium-squad
+cp user-stories/09-web-frontend.md duck-emporium-squad/
+cd duck-emporium-squad
+npm install && npm test
+git init && git add -A && git commit -m "starter: stories 1-8"
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item -Recurse starters/squad-story-9 duck-emporium-squad
+Copy-Item user-stories/09-web-frontend.md duck-emporium-squad/
+cd duck-emporium-squad
+npm install; npm test
+git init; git add -A; git commit -m "starter: stories 1-8"
+```
+
+All tests should pass, and `GET /` returns `404` - that is the gap Squad will close.
+
+<div class="tip" data-title="Tip">
+
+> Squad works best in a Git repository with a clean working tree. Its team lives in files, so you can review the generated `.squad/` folder like any other diff.
+
+</div>
+
+### 3.4.2 Install and initialize Squad
+
+Install the Squad CLI with one of these:
+
+| Platform | Command |
+| --- | --- |
+| npm (all platforms, **Node.js 22.5+**) | `npm install -g @bradygaster/squad-cli` |
+| macOS (Homebrew) | `brew install --cask bradygaster/squad/squad` |
+| Windows (WinGet) | `winget install --id bradygaster.Squad --exact` |
+
+If you are on Node.js 20, use Homebrew, WinGet or the [standalone install](https://bradygaster.github.io/squad/docs/features/standalone-install/) - they bundle their own Node.js. The duck app itself still runs on Node.js 20+.
+
+Then, inside your project folder (`duck-emporium/` or `duck-emporium-squad/`):
+
+```bash
+squad init
+squad doctor
+```
+
+`squad init` creates `.squad/` (team state, decisions, ceremonies), `.github/agents/squad.agent.md` (the coordinator agent) and some Squad skills and workflows. The team itself is still empty - Squad casts it in the next step, based on what you tell it.
+
+### 3.4.3 Cast the team
+
+Start the Squad coordinator.
+
+- **Copilot CLI:** `copilot --agent squad` inside the project folder.
+- **VS Code:** add the project folder to your workspace (as in 3.2.3), open a new chat, and pick **Squad** in the agent picker.
+
+<div class="warning" data-title="About --yolo">
+
+> Squad's README suggests `copilot --agent squad --yolo`, because a team makes many tool calls. `--yolo` skips **every** approval prompt, including shell commands. In this workshop, start without it and approve the first steps yourself. Only switch to `--yolo` in a throwaway folder once you trust what the team does - see Chapter 9 for safer sandboxed options.
+
+</div>
+
+Then describe the project and the team you want:
+
+```text
+Set up the team for this project. It is the Rubber Duck Emporium:
+a TypeScript/Node.js shop with a finished JSON API (Hono, zod, vitest).
+README.md documents every endpoint. The next job is a web frontend
+without a build step. I want a small team: a lead, a frontend developer,
+a tester and a reviewer.
+```
+
+Review the proposed members and their charters. Answer `yes` when you are happy, or ask for changes first.
+
+### 3.4.4 Let the team build Story 9
+
+Give the team the story. If you use Option A, point to `../user-stories/09-web-frontend.md` instead and make sure that folder is readable (`/add-dir ..` in the CLI, or keep the fork root open in VS Code).
+
+```text
+Team, implement the user story in 09-web-frontend.md.
+
+Rules:
+- Read the story and README.md first. Use only the existing JSON API.
+  Do not add or change backend routes.
+- Plain HTML, CSS and JavaScript in public/, served from GET /.
+  No framework, no bundler, no build step, no new runtime dependencies.
+- Lead: before anyone writes code, post a short plan - screens, files,
+  who owns which file - and wait for my approval.
+- Give each file exactly one owner, so parallel work never edits the same file.
+- Tester: add vitest tests that GET / serves the page and the scripts load.
+  npm test and npm run typecheck must pass.
+- Reviewer: check the result against every acceptance criterion and the
+  out-of-scope list, then report what is done and what is missing.
+```
+
+Expect the lead to come back with a plan. Push back if it adds a framework, a build step or new API routes - the same discipline as reviewing a `plan.md` in the SDD loop. Approve, then let the team work. Commit after each completed piece of work.
+
+### 3.4.5 Check the result
+
+```bash
+ADMIN_SECRET=change-me npm run dev
+```
+
+(PowerShell: `$env:ADMIN_SECRET="change-me"; npm run dev`.) Open <http://localhost:3000> and walk through Story 9 yourself:
+
+- [ ] The catalog lists ducks with name, category, price and tagline, and shows a friendly empty state.
+- [ ] Search, category and price filters work together.
+- [ ] A duck's detail page shows the description, personality traits and stock label.
+- [ ] You can add to the cart, change quantities, remove lines and see the total.
+- [ ] Adding more than the stock shows a friendly message, not a raw error.
+- [ ] Checkout validates the form and shows an order confirmation with the order ID.
+- [ ] Duck of the Day and the quiz work and link to detail pages.
+- [ ] It works on a narrow (mobile) window.
+- [ ] `npm test` and `npm run typecheck` pass, and `git diff` shows no changes under `src/routes/`.
+
+Then look inside `.squad/`: `decisions.md` and each agent's history show *why* the team did what it did. Compare that to the SDD artifacts from 3.2 - both make the agent's reasoning reviewable, one through specs, the other through team memory.
+
+<div class="tip" data-title="Troubleshooting">
+
+> - **`squad: command not found`** - open a new terminal after installing, or use the Homebrew/WinGet install.
+> - **The Squad agent does not show up in VS Code** - check that `.github/agents/squad.agent.md` exists and that the project folder (not only the fork root) is a workspace folder.
+> - **Two members edit the same file** - stop the run, ask the lead to reassign file ownership, and restore from your last commit.
+> - **The team touches the backend** - reject the change and remind it of the "no new backend routes" rule from the story.
+
+</div>
+
 ---
 
 <style>:root{--text-base-size:17px}html{font-size:var(--text-base-size)}.container{max-width:1200px!important}:root.dm-dark{--background:#0d1117;--text:#e6edf3;--text-medium:#9da7b3;--border-color:#30363d;--primary-light:#11263b;--accent-light:#3a1220;--accent-2-light:#0f2a31;--accent-3-light:#0f2b2b;--primary-dark:#58a6ff;--neutral-light:#161b22;--success-light:#12261a;--warning-light:#2d1f0f;--important-light:#2d1413;--task-light:#2b2712}.dm-dark body{background:var(--background);color:var(--text)}.dm-dark nav.sidebar{background:#161b22!important}.dm-dark code:not(pre>code),.dm-dark blockquote code:not(pre>code){background:#21262d!important;color:#79c0ff;border-color:var(--border-color)}.dm-dark tr:nth-child(2n){background:#161b22}.dm-dark th,.dm-dark td{border-color:var(--border-color)}.dm-dark img{background:#fff}#dm-toggle{position:fixed;top:.6rem;right:1rem;z-index:1000;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:var(--border-radius);padding:.25rem .6rem;font-size:1.1rem;cursor:pointer}#dm-toggle:hover{background:rgba(255,255,255,.3)}</style><button id="dm-toggle" title="Toggle light/dark mode" aria-label="Toggle light/dark mode" onclick="var d=document.documentElement.classList.toggle('dm-dark');try{localStorage.setItem('moaw-theme',d?'dark':'light')}catch(e){}">🌓</button><img hidden alt="" src="data:," onerror="var r=document.documentElement,t;try{t=localStorage.getItem('moaw-theme')}catch(e){}r.classList.toggle('dm-dark',t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches)">
